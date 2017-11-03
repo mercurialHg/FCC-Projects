@@ -50,26 +50,30 @@ function Pomodoro (timerElement, dialElement, repsElement) {
     this.reps = repsElement;
     this.globals = {
         work : null,
-        pause: null,
-        reps : null,
-        time : null,
-        elapsed: null,
-        session: null, //pause or work
-        running : null,
+        pause: null,        //int
+        reps : null,        //int
+        time : null,        //int
+        elapsed: null,      //int
+        session: null,      //pause or work
+        running : null,     //boolean
     }
 }
 
-Pomodoro.prototype.getTime = function () {
+Pomodoro.prototype.getTime = Pomodoro.prototype.resetTime = function (reset) {
     var _ = this;
 
-    var minutes = +_.timer.find('minutes').text() * 60,
-        seconds = +_.timer.find('minutes').text();
+    var minutes = +_.timer.children('.minutes').text() * 60,
+        seconds = +_.timer.children('.seconds').text();
 
     var work = _.globals.work = minutes + seconds;
     var reps = _.globals.reps = +_.reps.text();
     var pause = _.globals.pause = 300 // 5 min default
     _.globals.time = (work + pause ) * reps - pause //unless infinite, time ends with a session, no need for a break
 
+    if (reset) {
+        _.globals.session  = 'work';
+        _.globals.running = false;
+    }
 
 }
 
@@ -79,8 +83,14 @@ Pomodoro.prototype.displayTime = function () {
     }
 
     var _ = this;
-    
+    var minutes = Math.floor(_.globals.elapsed / 60);
+    var seconds = _.globals.elapsed % 60;
+
+    _.timer.children('.minutes').text(minutes);
+    _.timer.children('.seconds').text(seconds);
+
 }
+
 
 
 

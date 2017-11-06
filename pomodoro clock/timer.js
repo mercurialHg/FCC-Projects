@@ -37,3 +37,47 @@ var time = (session.work + session.pause) * 4 - session.pause;
 var timer = updateTime();
 
 
+
+function timer() {
+    
+//   console.log(
+//     "start: session reptime ... unit ",
+//     currentSessionTime,
+//     repTime,
+//     currentSession,
+//     settings.unit
+//   );
+
+    //reps finished
+
+    settings.currentSessionTime = --currentSessionTime;
+    settings.repTime = --repTime;
+
+    _.updateDial();
+    _.updateTime(currentSessionTime);
+
+
+    if (reptime - 1 < 0) {
+        if (settings.repCounter === settings.reps) {
+            console.log('finished');
+            return;
+          } else {
+            settings.repCounter++;
+            repTime = settings.work + settings.pause;
+          }
+    }
+
+    if (currentSessionTime -1 < 0) {
+        currentSession = settings.currentSession =
+          currentSession === "work" ? "pause" : "work";
+        currentSessionTime = settings[currentSession];
+        _.resetDial();
+        _.setUnit(currentSessionTime);
+        _.updateTime(currentSessionTime);
+      } else {
+        _.updateDial();
+        _.updateTime(currentSessionTime);
+      }
+
+  return setTimeout(timer, 1000);
+}

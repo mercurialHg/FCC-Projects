@@ -1,4 +1,4 @@
-$(function() {
+$(function () {
   function Pomodoro(dialSelector, timerSelector, repetitionsSelector) {
     if (!jQuery) throw "You will need jQuery for this";
 
@@ -12,7 +12,6 @@ $(function() {
       work: null,
       pause: null,
       reps: null,
-      time: null,
       //set in .start()
       currentSession: null, //pause or work
       repTime: null,
@@ -29,15 +28,16 @@ $(function() {
     };
   }
 
-  Pomodoro.prototype.init = function() {
+  Pomodoro.prototype.init = function () {
     var _ = this;
 
     _.getTime();
     _.getCircumference();
     _.settings.repCounter = 0;
+    
   };
 
-  Pomodoro.prototype.getCircumference = function() {
+  Pomodoro.prototype.getCircumference = function () {
     var _ = this,
       settings = _.settings;
 
@@ -45,7 +45,7 @@ $(function() {
     settings.circumference = (2 * Math.PI * radius).toFixed(2);
   };
 
-  Pomodoro.prototype.getTime = function() {
+  Pomodoro.prototype.getTime = function () {
     var _ = this,
       settings = _.settings;
 
@@ -58,20 +58,19 @@ $(function() {
     settings.pause = _.timer.children(".pause") * 60 || 4; ///review
     settings.work = minutes + seconds;
     settings.repTime = settings.work + settings.pause;
-    settings.time = (settings.work + settings.pause) * reps;
     settings.reps = reps;
 
     console.log(settings.pause, settings.work, settings.repTime, settings.time);
   };
 
-  Pomodoro.prototype.setUnit = function(time) {
+  Pomodoro.prototype.setUnit = function (time) {
     var _ = this,
       settings = _.settings;
 
     settings.unit = (settings.circumference / time).toFixed(2);
   };
 
-  Pomodoro.prototype.updateTime = function(time) {
+  Pomodoro.prototype.updateTime = function (time) {
     var _ = this;
 
     var seconds = time % 60,
@@ -82,13 +81,13 @@ $(function() {
     //insert fade in functionality
   };
 
-  Pomodoro.prototype.resetTime = function(time) {
+  Pomodoro.prototype.resetTime = function (time) {
     var _ = this;
     //add flicker animation
     _.updateTime(time);
   };
 
-  Pomodoro.prototype.updateDial = function() {
+  Pomodoro.prototype.updateDial = function () {
     var _ = this,
       target = _.dial.find("#dial-2"),
       offset = +target.attr("stroke-dashoffset");
@@ -96,107 +95,86 @@ $(function() {
     target.attr("stroke-dashoffset", offset - _.settings.unit);
   };
 
-  Pomodoro.prototype.resetDial = function() {
+  Pomodoro.prototype.resetDial = function () {
     var _ = this;
     target = _.dial.find("#dial-2");
 
     target.attr("stroke-dashoffset", 0);
   };
 
-  $.extend(Pomodoro.prototype, {
-    start: function() {
+  Pomodoro.prototype.start = function () {
       var _ = this,
-        settings = _.settings,
-        running = settings.running,
-        currentSession,
-        currentSessionTime,
-        currentSession,
-        repTime;
-      //if stopped
-      if (settings.initialized === null) {
-        _.init();
-        currentSession = settings.currentSession = "work";
-        currentSessionTime = settings.work;
-        repTime = settings.repTime;
-      }
-      //if paused
-      if (running === false) {
-        currentSessionTime = settings.currentSessionTime;
-        currentSession = settings.currentSession;
-        repTime = settings.repTime;
-      }
-      //running state
-      running = settings.running = true;
-      //calculate dash offset per second
-      _.setUnit(settings[currentSession]);
-      //console.log("init unit ", settings.unit);
+          settings = _.settings,
+          currentSession, currentSessionTime, repTime;
 
-      settings.timeoutID = timer();
 
-      function timer() {
-        
-        if (_.settings.running === false) {
-          
-          return
-        }
-           
-        console.log(
-          "start: session reptime ... unit ",
-          currentSessionTime,
-          repTime,
-          currentSession,
-          settings.unit
-        );
+          if (!initialized)  {
+            _.init();
 
-        if (repTime < 0) {
-          if (settings.repCounter === settings.reps) {
-            _.stop();
-            return;
-          } else {
-            settings.repCounter++;
-            repTime = settings.work + settings.pause;
+            currentSession = 'work';
+            currentSessionTime = settings.currentSession = settings.work;
+            repTime = settings.repTime = settings.work + settings.pause;
+          } 
+
+          if (settings.runnning === false ) {
+            currentSession = settings.currentSession;
+            currentSessionTime = settings.currentSessionTime;
+            repTime = settings.repTime;
           }
-        }
 
-        if (currentSessionTime < 0) {
-          currentSession = settings.currentSession =
-            currentSession === "work" ? "pause" : "work";
-          currentSessionTime = settings[currentSession];
-          _.resetDial();
-          _.setUnit(currentSessionTime);
-          _.updateTime(currentSessionTime);
-        } else {
-          _.updateDial();
-          _.updateTime(currentSessionTime);
-        }
-        
-        settings.currentSessionTime = --currentSessionTime;
-        settings.repTime = --repTime;
+          settings.running = true;
+          _.setUnit(settings[settings.currentSession]);
 
-        return setTimeout(timer, 1000);
-      }
-    },
-    pause: function() {
-      var _ = this;
+          settings.timeoutID = timer();
+          
+          var date = new Date();
+          console.log('init date', date.getMinutes() + ":"+ date.getSeconds())
 
-      _.settings.running = false;
+          function timer() {
 
-    },
+            settings.currentSessionTime = --currentSessionTime;
+            settings.repTime = --repTime;
+            
+            _.updateTime(currentSessionTime);
+            _.updateDial();
+            
+            (function () { 
+              var date = new Date();
+              console.log('init date', date.getMinutes() + ":"+ date.getSeconds())
+            })();
 
-    stop: function() {
-      var _ = this,
-        settings = _.settings;
+            if (repTime === 0) {
+              if (settings.repCounter === settings.reps) {
+                console.log('time for a long break');
+                return;
+              } else {
+                settings.repCounter++;
+                repTime = settings.work + settings.pause;
+              }
+            }
 
-      _.settings.running = false;
+            if (currentSessionTime === 0) {
+              settings.currentSession = currentSession = currentSession === 'work' ? 'pause' : 'work';
+              currentSessionTime = settings[currentSession];
+              
+            }
 
-      for (var i in settings) {
-        settings[i] = null;
-      }
-    }
-  });
+            return setTimeout(timer, 1000)
+
+          }
+
+  };  
+
+  Pomodoro.prototype.pause = function () {
+
+  };
+
+  Pomodoro.prototype.stop = function () {
+
+  };
 
   var pomodoro = new Pomodoro(".dial", ".timer", ".reps");
-  
+
   var body = $('body')[0]
   body.pomodoro = pomodoro;
 

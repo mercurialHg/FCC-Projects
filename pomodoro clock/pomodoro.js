@@ -1,32 +1,37 @@
 $(function () {
-  function Pomodoro(dialSelector, timerSelector, repetitionsSelector) {
+  function Pomodoro(dial, pomodoro, pause, repetitions, progress) {
     if (!jQuery) throw "You will need jQuery for this";
 
-    this.dial = $(dialSelector);
-    this.timer = $(timerSelector);
-    this.repetitions = $(repetitionsSelector);
-    this.$ = jQuery;
+    this.dialElem = $(dial);
+    this.pomodoroElem = $(pomodoro);
+    this.pauseElem = $(pause);
+    this.repetitionsElem = $(repetitions);
+    this.progressElement = $(progress);
 
     this.settings = {
-      //get with .getTime()
-      work: null,
-      pause: null,
-      reps: null,
-      //set in .start()
-      currentSession: null, //pause or work
-      repTime: null,
-      currentSessionTime: null,
-      timeToGo_rep: null,
-      timeToGo_sess: null,
-      running: null,
-      timeoutID: null, //string
-      repCounter: null,
-      // set in setUnit()
+        //saved on init
+        pomodoro: 0,
+        pause: 0,
+        repetitions: 0,
+        circ: 0,
+    };
+
+    this.memory = {
+      //saved on pause
+      session: null,
+      sessionProgress: null,
+      repetitionProgress: null,
       unit: null,
     };
+
+    this.state = {
+      //describe state
+      initialized: false,
+      paused: false,
+    }
   }
 
-  Pomodoro.prototype.init = function (stop) {
+  Pomodoro.prototype.init = function () {
 
     console.log(this)
     var _ = this,
@@ -64,7 +69,7 @@ $(function () {
     //console.log('minutes seconds reps ', minutes, seconds, reps);
 
     settings.pause = _.timer.children(".pause") * 60 || 4; ///review
-    settings.work = minutes + seconds;
+    settings.pomodoro = minutes + seconds;
     settings.reps = reps;
 
     //console.log('work pause ', settings.work, settings.pause);

@@ -31,6 +31,8 @@ App description:
             ...
             end
 
+Debug
+    create a debug tag to attach debug info       
 
 Background:
 
@@ -43,15 +45,18 @@ Background:
         write sessionProgress = 'pomodoro';     --> set initially to pomodoro
         write repetitionProgress                --> how much of a pomodoro + pause has elapsed
 
-        write paused             --> false
-        write init               --> true
 
+        write init               --> true
+        write paused             --> false
+        write stopped            --> true
         get circumference
         set unit =  circumference / pomodoro;
         set progressCounter  = 0
 
     start:
         //track how much of a pomodoro/pause has passed + update dial for each second
+        UI: pomodoro.toggleClass('not_running')
+
 
         if (not paused) do nothing
 
@@ -70,7 +75,7 @@ Background:
         write paused --> true 
 
     stop:
-        write init   --> false
+        write stopped   --> false
 
         reset dial;
         clear memory;

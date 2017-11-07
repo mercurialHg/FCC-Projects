@@ -1,19 +1,35 @@
 $(function () {
-  function Pomodoro(dial, pomodoro, pause, repetitions, progress) {
+
+  function Pomodoro(dial, timer, pomodoro, pause, repetitions, progress) {
     if (!jQuery) throw "You will need jQuery for this";
 
-    this.dialElem = $(dial);
-    this.pomodoroElem = $(pomodoro);
+    this.dialElem = $(dial);      //circle svg element
+    this.timerElem = $(timer)     //container for pomodoro and pause
+    this.pomodoroElem = $(pomodoro);  //pomodoro timer before start, countdown during 
     this.pauseElem = $(pause);
     this.repetitionsElem = $(repetitions);
-    this.progressElement = $(progress);
+    this.progressElem = $(progress); // container for progress
+
+    this.defaultTransition = "all .2s linear"
+
+    /*
+      structure: 
+      main
+        | clock
+            | dial
+            | timer
+                | pomodoro
+                | pause
+            | repetitions
+        | progress
+    */
 
     this.settings = {
-        //saved on init
-        pomodoro: 0,
-        pause: 0,
-        repetitions: 0,
-        circ: 0,
+      //saved on init
+      pomodoro: 0,
+      pause: 0,
+      repetitions: 0,
+      circ: 0,
     };
 
     this.memory = {
@@ -26,182 +42,198 @@ $(function () {
 
     this.state = {
       //describe state
-      initialized: false,
-      paused: false,
+      initialized: null,
+      paused: null,
+      stopped: null,
+      progress: null,
     }
   }
 
   Pomodoro.prototype.init = function () {
-
-    console.log(this)
     var _ = this,
-        settings = _.settings
-        
-    _.getTime(); //update time
+      settings = _.settings,
+      state = _.state;
+
+    _.getSettings();
+    state.initialized = true;
+    state.paused = false;
+    state.stopped = true;
+    state.progress = 0;
+  };
+
+  Pomodoro.prototype.getSettings = function () {
+    var _ = this,
+      settings = _.settings;
+
+    var minutes = +_.pomodoroElem.children('.minutes').text() * 60,
+      seconds = +_.pomodoroElem.children('.seconds').text();
+    settings.pomodoro = minutes + seconds;
+
+    minutes = seconds = null
+
+    minutes = +_.pauseElem.children('.minutes').text() * 60;
+    seconds = +_.pauseElem.children('.seconds').text();
+
+    settings.pause = minutes + seconds;
+
+    settings.repetitions = +_.repetitionsElem.text();
+
     _.getCircumference();
-    _.resetDial();
-    settings.repCounter = 0;
-    settings.currentSession = 'work';
-    settings.currentSessionTime = settings.work;
-    settings.repTime = settings.work + settings.pause;
-    _.updateTime(settings.currentSessionTime)
-    settings.running = false;
-    console.log(settings)
+
+    //console.log('work pause ', settings);
   };
 
   Pomodoro.prototype.getCircumference = function () {
     var _ = this,
       settings = _.settings;
 
-    var radius = +_.dial.find("#dial-2").attr("r");
-    settings.circumference = (2 * Math.PI * radius).toFixed(2);
-    _.dial.find("#dial-2").attr("stroke-dasharray", settings.circumference)
-  };
-
-  Pomodoro.prototype.getTime = function () {
-    var _ = this,
-      settings = _.settings;
-
-    var minutes = +_.timer.children(".minutes").text() * 60,
-      seconds = +_.timer.children(".seconds").text(),
-      reps = +_.repetitions.text() || 1;
-
-    //console.log('minutes seconds reps ', minutes, seconds, reps);
-
-    settings.pause = _.timer.children(".pause") * 60 || 4; ///review
-    settings.pomodoro = minutes + seconds;
-    settings.reps = reps;
-
-    //console.log('work pause ', settings.work, settings.pause);
+    var radius = +_.dialElem.attr("r");
+    settings.circ = (2 * Math.PI * radius).toFixed(2);
+    _.dialElem.attr("stroke-dasharray", settings.circ)
   };
 
   Pomodoro.prototype.setUnit = function (time) {
     var _ = this,
       settings = _.settings;
 
-    settings.unit = (settings.circumference / time).toFixed(2);
+    settings.unit = (settings.circ / time).toFixed(2);
   };
 
-  Pomodoro.prototype.updateTime = function (time) {
+  Pomodoro.prototype.resetTime = Pomodoro.prototype.updateTime = function (time) {
     var _ = this;
 
     var seconds = time % 60,
       minutes = (time - seconds) / 60;
 
-    _.timer.children(".seconds").text(seconds >= 10 ? seconds : "0" + seconds);
-    _.timer.children(".minutes").text(minutes >= 10 ? minutes : "0" + minutes);
-    //insert fade in functionality
-  };
+    _.pomodoroElem.children(".seconds").text(seconds >= 10 ? seconds : "0" + seconds);
+    _.pomodoroElem.children(".minutes").text(minutes >= 10 ? minutes : "0" + minutes);
 
-  Pomodoro.prototype.resetTime = function (time) {
-    var _ = this;
-    //add flicker animation
-    _.updateTime(time);
   };
 
   Pomodoro.prototype.updateDial = function () {
     var _ = this,
-      target = _.dial.find("#dial-2"),
-      offset = +target.attr("stroke-dashoffset");
+      offset = +_.dialElement.attr("stroke-dashoffset");
 
-    target.attr("stroke-dashoffset", offset - _.settings.unit);
+    _.dialElement.attr("stroke-dashoffset", offset - _.memory.unit);
 
-    console.log(offset, _.settings.unit);
+    console.log(offset, _.memory.unit);
   };
 
   Pomodoro.prototype.resetDial = function () {
     var _ = this;
-    target = _.dial.find("#dial-2");
-    target.attr("stroke-dashoffset", 0);
+
+    _.pomodoroElem.css("transition", "none");
+    _.dialElem.attr("stroke-dashoffset", 0);
+    _.pomodoroElem.css("transition", _.defaultTransition);
+
   };
 
   Pomodoro.prototype.start = function () {
     var _ = this,
       settings = _.settings,
-      currentSession, currentSessionTime, repTime;
+      memory = _.memory,
+      state = _.state;
 
-    console.log(settings.running, "asdfhasjdgdfasjkdf")
+    //local vars
+    var session, sessionProgress, repetitionProgress, unit;
 
-    if (settings.running === true) return;
+    if (state.initialized === false) {
+      _.init();
+    }  //create pomodoro, pause, repetitions, circ
 
-    if (settings.running === false) {
-      console.log('asdfasldfhaskjldfhjklasdhfjkashdfjk', settings.currentSession, settings.currentSessionTime)
-
-      currentSession = settings.currentSession;
-      currentSessionTime = settings.currentSessionTime;
-      repTime = settings.repTime;
-
-      console.log(currentSession, currentSessionTime, repTime)
+    if (state.paused) {
+      session = memory.session;
+      sessionProgress = memory.sessionProgress;
+      repetitionProgress = memory.repetitionProgress;
+      unit = memory.unit;
+    } else {
+      session = "pomodoro";
+      sessionProgress = settings.pomodoro;
+      repetitionProgress = settings.pomodoro + settings.pause;
+      _.setUnit(sessionProgress);
     }
 
-    settings.running = true;
-    _.setUnit(settings[currentSession]);
-    settings.timeoutID = timer();
+    var timer = runPomodoro();
 
-    // console.log(settings.unit)
-    var date = new Date();
-    // console.log('init date', date.getSeconds())
-
-
-    //timer function
-    function timer() {
-
-      if (settings.running === false) return;
-
-      settings.currentSessionTime = --currentSessionTime;
-      settings.repTime = --repTime;
-
-      _.updateTime(currentSessionTime);
-      _.updateDial();
-
-      console.log("rep time session ", repTime, currentSessionTime, currentSession);
-
-
-      if (currentSessionTime < 0) {
-        settings.currentSession = currentSession = currentSession === 'work' ? 'pause' : 'work';
-        currentSessionTime = settings[currentSession];
-        _.resetDial();
-        _.setUnit(currentSessionTime);
-        _.updateTime(currentSessionTime);
-        repTime = settings.repTime = ++repTime;
-        console.log('session changed ', repTime, currentSessionTime, currentSession, settings.unit)
+    function runPomodoro() {
+      //check if paused
+      if (state.paused) {
+        saveToMemory();
+        return;
       }
 
-      if (repTime === 0) {
-        if (settings.repCounter === settings.reps) {
+      sessionProgress--;
+      repetitionProgress--;
+
+      _.updateDial();
+      _.updateTime(sessionProgress);
+
+      if (sessionProgress < 0) {
+        session = session === 'work' ? 'pause' : 'work';
+        sessionProgress = settings[session];
+        _.resetDial();
+        _.setUnit(sessionProgress);
+        _.updateTime(sessionProgress);
+        repetitionProgress++;
+
+        console.log('session changed ',
+          repetitionProgress,
+          sessionProgress,
+          session)
+
+      }
+      if (repetitionProgress === 0) {
+        state.progress++;
+        if (state.progress === settings.repetitions) {
           _.stop();
           console.log('time for a long break', repTime, currentSessionTime, currentSession);
           return;
-        } else {
-          settings.repCounter++;
-          repTime = settings.work + settings.pause;
         }
       }
 
-      if (settings.running === false) return;
-      return setTimeout(timer, 1000)
+      //check if paused
+      if (state.paused) {
+        saveToMemory();
+        return;
+      }
 
-    } //end timer function
+      return setTimeout(runPomodoro, 1000);
+    }; // ens runPomodoro()
 
-  };
+    function saveToMemory() {
+      memory.session = session;
+      memory.sessionProgress = sessionProgress;
+      memory.repetitionProgress = repetitionProgress;
+      unit = memory.unit;
+    }
+
+  }//end start()
 
   Pomodoro.prototype.pause = function () {
-    this.settings.running = false;
-    console.log('paused')
+    this.state.paused = false;
   };
 
   Pomodoro.prototype.stop = function () {
-    var _ = this,
-      settings = _.settings;
+    var _ = this;
 
-    if (_.settings.running === false ) return;
-    
-    settings.repCounter = 1;
-    
-    console.log('stopped')
+    _.clearMemory();
+    _.resetDial();
+    _.updateTime(_.settings.pomodoro);
+    _.state.progress = 0;
+
+    //add UI reset
+
   };
 
-  var pomodoro = new Pomodoro(".dial", ".timer", ".reps");
+  Pomodoro.prototype.clearMemory = function () {
+    var memory = this.memory;
+
+    for (var i in memory) {
+      memory[i] = null;
+    }
+  }
+
+  var pomodoro = new Pomodoro("#dial-2", "", "");
 
   var body = $('body')[0]
   body.pomodoro = pomodoro;
